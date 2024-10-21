@@ -33,5 +33,6 @@ This is a URL Shortening service built using Spring Boot that allows users to sh
 5. **Run the Application**
 
 6. **Accessing the API**:
-   The application will be running on http://localhost:8080/api/shortenUrl
+   - The application will be running on http://localhost:8080/api/shortenUrl
+   - Swagger UI http://localhost:8080/swagger-ui/index.html
    

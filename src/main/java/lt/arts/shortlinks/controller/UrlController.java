@@ -7,10 +7,12 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import lt.arts.shortlinks.dto.UrlDto;
 import lt.arts.shortlinks.exception.InvalidUrlException;
 import lt.arts.shortlinks.exception.UrlNotFoundException;
 import lt.arts.shortlinks.model.Url;
 import lt.arts.shortlinks.service.UrlService;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -34,20 +36,22 @@ import static lt.arts.shortlinks.utils.ErrorCodes.*;
 public class UrlController {
 
     private final UrlService urlService;
+    private final ModelMapper modelMapper;
 
     @Autowired
-    public UrlController(UrlService urlService) {
+    public UrlController(UrlService urlService, ModelMapper modelMapper) {
         this.urlService = urlService;
+        this.modelMapper = modelMapper;
     }
 
     @Operation(summary = "Create a short url for provided original url")
     @PostMapping("/short")
-    ResponseEntity<Url> createShortenedUrl(@io.swagger.v3.oas.annotations.parameters.RequestBody(
+    ResponseEntity<UrlDto> createShortenedUrl(@io.swagger.v3.oas.annotations.parameters.RequestBody(
             description = "Url to create", required = true,
             content = @Content(mediaType = "application/json",
                     schema = @Schema(implementation = Url.class),
                     examples = @ExampleObject(value = "{ \"originalUrl\": \"https://example.com\" }")))
-                                           @Valid @RequestBody Url originalUrl,
+                                           @Valid @RequestBody UrlDto originalUrlDto,
                                            BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             StringBuilder errorMsg = new StringBuilder();
@@ -59,22 +63,30 @@ public class UrlController {
             }
             throw new InvalidUrlException(errorMsg.toString());
         }
-        Url shortenedUrl = urlService.saveShortenedUrl(originalUrl.getOriginalUrl());
+        Url shortenedUrl = urlService.saveShortenedUrl(originalUrlDto.getOriginalUrl());
+
         log.info("Shortened Url: " + shortenedUrl);
-        return new ResponseEntity<>(shortenedUrl, HttpStatus.CREATED);
+        return new ResponseEntity<>(convertToDto(shortenedUrl), HttpStatus.CREATED);
     }
 
     @Operation(summary = "Get a short url for provided original url")
     @GetMapping("/short")
-    public ResponseEntity<Url> getShortenedUrl(@Parameter(description = "Original url to be searched")
+    public ResponseEntity<UrlDto> getShortenedUrl(@Parameter(description = "Original url to be searched")
                                                @RequestParam String originalUrl) {
 
         Optional<Url> url = urlService.getShortenedUrl(originalUrl);
         if (url.isPresent()) {
             log.info("Get shortened Url " + url.get().getShortenedUrl());
-            return new ResponseEntity<>(url.get(), HttpStatus.OK);
+            return new ResponseEntity<>(convertToDto(url.get()), HttpStatus.OK);
         }
         throw new UrlNotFoundException(URL_NOT_FOUND);
+    }
+
+    private Url convertToUrl(UrlDto urlDto){
+        return modelMapper.map(urlDto, Url.class);
+    }
+    private UrlDto convertToDto(Url url){
+        return modelMapper.map(url, UrlDto.class);
     }
 
 }
